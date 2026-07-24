@@ -56,41 +56,63 @@ export const ProductProvider = ({ children }) => {
   }, [setProducts]);
 
   const updateStock = useCallback((sku, quantity, type) => {
-    const product = products.find(p => p.sku === sku);
-    if (!product) {
+    // Find the product
+    const productIndex = products.findIndex(p => p.sku === sku);
+    if (productIndex === -1) {
       toast.error('Product not found');
       return false;
     }
 
-    const newQuantity = type === 'restock' 
-      ? product.stockQuantity + quantity
-      : product.stockQuantity - quantity;
-
-    if (newQuantity < 0) {
-      toast.error('Insufficient stock for this sale');
+    const product = products[productIndex];
+    const quantityNum = parseInt(quantity);
+    
+    if (isNaN(quantityNum) || quantityNum <= 0) {
+      toast.error('Please enter a valid quantity');
       return false;
     }
 
-    setProducts(prev => prev.map(p =>
-      p.sku === sku
-        ? { ...p, stockQuantity: newQuantity, updatedAt: new Date().toISOString() }
-        : p
-    ));
+    let newQuantity;
+    if (type === 'restock') {
+      newQuantity = product.stockQuantity + quantityNum;
+    } else if (type === 'sale') {
+      if (product.stockQuantity < quantityNum) {
+        toast.error(`Insufficient stock! Only ${product.stockQuantity} units available`);
+        return false;
+      }
+      newQuantity = product.stockQuantity - quantityNum;
+    } else {
+      toast.error('Invalid transaction type');
+      return false;
+    }
+
+    // Update the product
+    const updatedProducts = [...products];
+    updatedProducts[productIndex] = {
+      ...product,
+      stockQuantity: newQuantity,
+      updatedAt: new Date().toISOString()
+    };
+    setProducts(updatedProducts);
 
     // Record in stock history
     const historyEntry = {
-      id: Date.now().toString(),
-      productSku: sku,
+      id: Date.now().toString() + Math.random().toString(36).substr(2, 5),
+      productSku: product.sku,
       productName: product.name,
-      type,
-      quantity,
+      type: type,
+      quantity: quantityNum,
       previousQuantity: product.stockQuantity,
-      newQuantity,
+      newQuantity: newQuantity,
       timestamp: new Date().toISOString()
     };
+    
     setStockHistory(prev => [...prev, historyEntry]);
 
-    toast.success(`Stock ${type === 'restock' ? 'restocked' : 'sold'} successfully!`);
+    toast.success(
+      type === 'restock' 
+        ? `Added ${quantityNum} units to ${product.name}`
+        : `Sold ${quantityNum} units of ${product.name}`
+    );
     return true;
   }, [products, setProducts, setStockHistory]);
 

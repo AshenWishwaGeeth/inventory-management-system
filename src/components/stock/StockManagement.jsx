@@ -1,15 +1,42 @@
 import React, { useState } from 'react';
 import { Formik, Form, Field, ErrorMessage } from 'formik';
-import { stockUpdateValidationSchema } from '../../utils/validations';
+import * as Yup from 'yup';
+import toast from 'react-hot-toast';
+
+// Validation schema for stock updates
+const stockUpdateValidationSchema = Yup.object().shape({
+  quantity: Yup.number()
+    .required('Quantity is required')
+    .integer('Quantity must be a whole number')
+    .min(1, 'Quantity must be at least 1')
+    .max(99999, 'Quantity is too large'),
+});
 
 const StockManagement = ({ product, onUpdate, onClose }) => {
   const [transactionType, setTransactionType] = useState('restock');
 
-  const handleSubmit = (values, { setSubmitting }) => {
-    const success = onUpdate(product.sku, parseInt(values.quantity), transactionType);
-    setSubmitting(false);
-    if (success) {
-      onClose();
+  const handleSubmit = async (values, { setSubmitting, resetForm }) => {
+    try {
+      const quantity = parseInt(values.quantity);
+      
+      // Validate stock for sale
+      if (transactionType === 'sale' && quantity > product.stockQuantity) {
+        toast.error(`Not enough stock! Only ${product.stockQuantity} units available`);
+        setSubmitting(false);
+        return;
+      }
+
+      const success = await onUpdate(product.sku, quantity, transactionType);
+      setSubmitting(false);
+      
+      if (success) {
+        resetForm();
+        onClose();
+      }
+    } catch (error) {
+      console.error('Error updating stock:', error);
+      toast.error('Failed to update stock');
+      setSubmitting(false);
     }
   };
 
@@ -20,9 +47,12 @@ const StockManagement = ({ product, onUpdate, onClose }) => {
           Update Stock - {product.name}
         </h2>
         
-        <div className="mb-4">
+        <div className="mb-4 space-y-2">
           <p className="text-sm text-gray-600 dark:text-gray-400">
             Current Stock: <span className="font-semibold">{product.stockQuantity}</span>
+          </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            SKU: <span className="font-semibold">{product.sku}</span>
           </p>
         </div>
 
@@ -31,7 +61,7 @@ const StockManagement = ({ product, onUpdate, onClose }) => {
           validationSchema={stockUpdateValidationSchema}
           onSubmit={handleSubmit}
         >
-          {({ isSubmitting, setFieldValue }) => (
+          {({ isSubmitting, setFieldValue, values }) => (
             <Form className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-1">
@@ -67,11 +97,6 @@ const StockManagement = ({ product, onUpdate, onClose }) => {
                     Sale
                   </button>
                 </div>
-                <ErrorMessage
-                  name="type"
-                  component="div"
-                  className="text-red-500 text-sm mt-1"
-                />
               </div>
 
               <div>
@@ -90,19 +115,33 @@ const StockManagement = ({ product, onUpdate, onClose }) => {
                   component="div"
                   className="text-red-500 text-sm mt-1"
                 />
+                {transactionType === 'sale' && values.quantity > product.stockQuantity && (
+                  <div className="text-red-500 text-sm mt-1">
+                    Not enough stock! Only {product.stockQuantity} units available
+                  </div>
+                )}
               </div>
 
               <div className="flex space-x-3 pt-2">
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || (transactionType === 'sale' && values.quantity > product.stockQuantity)}
                   className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors ${
                     transactionType === 'restock'
                       ? 'bg-green-500 hover:bg-green-600'
                       : 'bg-blue-500 hover:bg-blue-600'
+                  } ${
+                    (isSubmitting || (transactionType === 'sale' && values.quantity > product.stockQuantity))
+                      ? 'opacity-50 cursor-not-allowed'
+                      : ''
                   }`}
                 >
-                  {transactionType === 'restock' ? 'Restock' : 'Process Sale'}
+                  {isSubmitting 
+                    ? 'Processing...' 
+                    : transactionType === 'restock' 
+                      ? 'Restock' 
+                      : 'Process Sale'
+                  }
                 </button>
                 <button
                   type="button"

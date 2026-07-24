@@ -37,8 +37,40 @@ const ProductList = ({ products, onAddProduct, onEditProduct, onDeleteProduct, o
     setShowAddForm(false);
   };
 
-  const handleStockUpdate = (sku, quantity, type) => {
-    return onUpdateStock(sku, quantity, type);
+  const handleStockUpdate = async (sku, quantity, type) => {
+    try {
+      // Validate quantity
+      if (!quantity || quantity <= 0) {
+        console.error('Invalid quantity');
+        return false;
+      }
+
+      // Find the product to check current stock
+      const product = products.find(p => p.sku === sku);
+      if (!product) {
+        console.error('Product not found');
+        return false;
+      }
+
+      // For sales, check if enough stock
+      if (type === 'sale' && product.stockQuantity < quantity) {
+        console.error('Not enough stock');
+        return false;
+      }
+
+      // Call the update function
+      const result = await onUpdateStock(sku, quantity, type);
+      
+      // Clear the modal after successful update
+      if (result) {
+        setStockManagementProduct(null);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error('Stock update error:', error);
+      return false;
+    }
   };
 
   const handleRestock = (sku) => {
@@ -51,6 +83,11 @@ const ProductList = ({ products, onAddProduct, onEditProduct, onDeleteProduct, o
   const handleSale = (sku) => {
     const product = products.find(p => p.sku === sku);
     if (product) {
+      // Check if product is in stock
+      if (product.stockQuantity === 0) {
+        alert('This product is out of stock!');
+        return;
+      }
       setStockManagementProduct(product);
     }
   };
