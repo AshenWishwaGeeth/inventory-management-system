@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useProducts } from '../context/ProductContext';
 import StockHistory from '../components/stock/StockHistory';
 

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useCallback } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
 import { generateSKU } from '../utils/helpers';
 import toast from 'react-hot-toast';
