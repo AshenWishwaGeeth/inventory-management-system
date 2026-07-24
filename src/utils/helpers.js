@@ -25,6 +25,12 @@ export const getStockStatus = (quantity) => {
   return 'in-stock';
 };
 
+export const STOCK_STATUS_LABELS = {
+  'in-stock': 'In Stock',
+  'low-stock': 'Low Stock',
+  'out-of-stock': 'Out of Stock'
+};
+
 export const filterProducts = (products, searchTerm, category, stockStatus) => {
   return products.filter(product => {
     const matchesSearch = searchTerm === '' || 
@@ -43,6 +49,11 @@ export const filterProducts = (products, searchTerm, category, stockStatus) => {
 };
 
 export const exportToCSV = (products) => {
+  if (products.length === 0) {
+    alert('No products to export');
+    return;
+  }
+
   const headers = ['Name', 'SKU', 'Category', 'Price', 'Stock Quantity', 'Total Value'];
   const rows = products.map(product => [
     product.name,
@@ -58,13 +69,13 @@ export const exportToCSV = (products) => {
     ...rows.map(row => row.join(','))
   ].join('\n');
 
-  const blob = new Blob([csvContent], { type: 'text/csv' });
-  const url = window.URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'inventory_export.csv';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  window.URL.revokeObjectURL(url);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  const url = URL.createObjectURL(blob);
+  link.setAttribute('href', url);
+  link.setAttribute('download', `inventory_export_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 };
